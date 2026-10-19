@@ -1,0 +1,108 @@
+# DARON 주행가능성 격자 파라미터
+#
+# ⚠⚠ [261007 실험용 완화 적용 중] 불가 판정 기준을 일부러 후하게 풀어둔 상태다.
+#     judge_core : 경사 20° → 30°, 턱 4 cm → 7 cm, 벽(셀 내 높이 폭) 15 cm → 30 cm
+#     builtin    : 경사 25° → 30°, 단차 4.49 cm → 7 cm (warn 은 같은 비율로)
+#     실험 끝나면 아래 값을 원래대로 돌릴 것 — 원본: ../backup/traversability.yaml.bak_261007_pre-loosen
+#     7 cm 는 지상고 44.9 mm 보다 높다 → 격자가 통과로 찍어도 배가 걸릴 수 있다.
+#
+# ⚠ 이 파일의 임계값은 논문 TABLE I(제원)에서 유도한 **잠정값**이다.
+#   실주행으로 확정되기 전까지는 임의값으로 취급할 것. 확정 시 아래 [확정 절차] 참고.
+#
+# ─────────────────────────────────────────────────────────────
+# [로버 제원] 논문 TABLE I — Physical specifications of the rover
+# ─────────────────────────────────────────────────────────────
+#   Driving size      449.5 x 291.1 x 115.5 mm   (L x W x H)
+#   Ground clearance  44.9 mm  (neutral drive mode)
+#   Wheel             112 mm diameter rigid grouser wheel  -> 반경 56 mm
+#   Passive axle roll ±30°
+#   Total mass        2.5 kg
+#   Drive / steering  4WD / 4WS, 중앙 관절(central articulation)
+#
+# ─────────────────────────────────────────────────────────────
+# [제원 -> 임계값 유도 규칙]  제원이 바뀌면 이 규칙대로 다시 계산한다
+# ─────────────────────────────────────────────────────────────
+#   cell_size        = 차체 폭 / 6  =  0.2911 / 6  ~= 0.05 m
+#                      (폭 방향으로 5~6칸. 너무 크면 바퀴 하나 크기 장애물을 놓치고,
+#                       너무 작으면 셀당 점 수가 모자라 통계가 흔들린다)
+#
+#   step_block_m     = ground clearance = 0.0449 m
+#                      지상고를 넘는 단차는 배가 걸린다(high-centering).
+#   step_warn_m      = step_block_m * 0.55 ~= 0.025 m
+#
+#   slope_block_deg  = 25°   ⚠ 논문에 최대 등판각이 없어 추정한 값이다.
+#                      passive axle roll ±30° 가 지형 순응 한계이므로 그보다 보수적으로 잡았다.
+#                      실측 등판 시험을 하면 그 값으로 교체할 것.
+#   slope_warn_deg   = slope_block_deg * 0.6 = 15°
+#
+#   rough_block_m    = 0.02 m  (셀 내 높이 표준편차)
+#                      D405 depth 노이즈가 1 m 에서 약 12 mm(README §11)이므로
+#                      그보다 확실히 위에 둬야 노이즈를 장애물로 오인하지 않는다.
+#   rough_warn_m     = 0.01 m
+#
+#   inflate_radius_m = 차체 폭 / 2 = 0.2911 / 2 ~= 0.146 m
+#                      로버를 점으로 계획하기 위해 blocked 셀을 반차폭만큼 부풀린다.
+#
+# ─────────────────────────────────────────────────────────────
+# [확정 절차]  실주행 후 이 순서로 값을 확정한다
+# ─────────────────────────────────────────────────────────────
+#   1. 줄자로 각도를 잰 경사로를 로버가 실제로 오르내리게 한다.
+#      올라간 최대 각도 - 3° 를 slope_block_deg 로 둔다.
+#   2. 각목 등으로 단차를 1 cm 씩 올려가며 넘게 한다.
+#      넘은 최대 높이 - 5 mm 를 step_block_m 으로 둔다.
+#   3. 확정한 값을 이 파일에 쓰고, 위 [제원] 블록에 실측일자를 적는다.
+#   4. 같은 bag 을 cloud_to_trav.py 로 다시 돌려 격자가 실제 주행 결과와
+#      일치하는지 확인한다(로버가 지나간 셀이 blocked 로 찍히면 임계값이 과하다).
+
+/**:
+  ros__parameters:
+    # --- 입출력 ---
+    cloud_topic: /live_tsdf/map_cloud   # live_tsdf_node 가 내보내는 맵 클라우드
+    odom_topic: /slam/odometry          # 자세 소스. 맵과 반드시 같은 소스를 쓸 것
+    imu_topic: /imu/data                # 중력 방향 산출 전용 (자세 추정에는 쓰지 않는다)
+    update_period: 2.0                  # 격자 재계산 주기 [s]
+
+    # --- 중력 정렬 ---
+    # imu:   IMU 가속도 + odom 자세로 중력 방향을 구한다 (기울어진 채 시작해도 정확)
+    # fixed: odom 의 -Z 를 중력으로 가정한다 (IMU 없을 때만)
+    gravity_mode: imu
+
+    # --- 판정기 ---
+    # builtin     : trav_core.judge_builtin — 로버 제원에서 유도한 3지표(경사/단차/거칠기) 램프
+    # judge_core  : ~/daron_ros/judge_core.py — CH09/K17 기반. 평면적합 경사 + 2단계 턱 +
+    #               수직구조물(WALL) + 낙차 의심(NEG). 임계값은 judge_core.py 상수를 쓴다
+    #               (이 파일의 slope_*/step_*/rough_* 는 builtin 전용이라 무시됨).
+    # ⚠ judge_core 는 cell_size 0.05 를 전제로 창 반경을 셀 수로 정한다. 바꾸면 예외로 막힌다.
+    # [261008] 기본을 judge_core 로 (옛 기본 builtin). launch 인자 judge:= 가 이 값을 덮어쓴다.
+    judge: judge_core
+
+    # --- 격자 (위 유도 규칙 참고) ---
+    cell_size: 0.05
+    min_points_per_cell: 2              # 이보다 점이 적은 셀은 unknown(-1). 260928 5 -> 2
+    max_range_m: 8.0                    # 로버 중심에서 이 반경까지만 격자를 만든다
+
+    # --- 주행가능성 임계값 (잠정값 — 위 [확정 절차] 참고) ---
+    # [261007 실험용 완화] 원래 15 / 25 / 0.025 / 0.0449. 끝나면 원래대로.
+    slope_warn_deg: 18.0                # = block * 0.6
+    slope_block_deg: 30.0
+    step_warn_m: 0.0385                 # = block * 0.55
+    step_block_m: 0.07                  # 원래 0.0449 (= ground clearance)
+    rough_warn_m: 0.01
+    rough_block_m: 0.02
+
+    # --- 로버 외형 ---
+    # 판정 뒤 팽창. 260928 끔(0.0). 켜려면 0.146 (= 차체 폭 / 2).
+    # 끈 상태에서는 격자가 로버 중심 기준이 아니므로 경로 계획 시 차체 폭을 따로 고려해야 한다.
+    inflate_radius_m: 0.0
+
+    # judge_core 낙차(NEG) 의심 검사. 미관측 셀마다 파이썬 루프라 느려서 실시간에서는 끈다 (260928).
+    # judge:=builtin 이면 영향 없음.
+    neg_check: false
+
+    # --- judge_core 기준값 (judge:=judge_core 일 때만) ---
+    # [261007 실험용 완화] 원래 judge_core.py 상수 S_CRIT=20 / H_CRIT=0.04 / WALL_SPAN=0.15.
+    # judge_core.py 자체는 안 바꿈(daron-nav 와 md5 공유) — 노드가 기동 때 모듈 상수를 덮어쓴다.
+    # 실험 끝나면 이 3줄을 지우거나 원래 값으로.
+    s_crit_deg: 25.0                    # 경사 [deg]  (원래 20)
+    h_crit_m: 0.05                      # 턱 [m]      (원래 0.04)
+    wall_span_m: 0.15                   # 벽 = 셀 안 높이 폭 [m] (원래 0.15)

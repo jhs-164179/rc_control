@@ -1,0 +1,31 @@
+{
+  "algorithm_version": "radial_esf_hybrid_v2_dual_20261007",
+  "overlay_version": "round_discs_at_display_resolution_v2",
+  "source_sha256": {
+    "radial_esf": "e1bff9cb767d9c847597890af5d71564d898526443e59385e089a4a36b9bdcb2",
+    "hybrid": "fcc5077e733fada62044f4f6b1b2f184bc0a564189b23af6ab25d1df99aa7003"
+  },
+  "packaging_change": "Only the hybrid import prefix changes to the local .radial_esf module; baseline bytes unchanged.",
+  "files": {
+    "README.md": "3c198d28e57b3ab513a91b7053e0edb99edc409632d6548b653823c1206967ff",
+    "requirements.txt": "8d20af3f7940110a24009b46cc0bc9cde23d3105d7bab3f30fb6e07e8d3986ef",
+    "analyze_rim.py": "f876be87b3c583e05d86bc8d3b5ae1b0692787bd4866f28e547696106d8221b3",
+    "verify_package.py": "b3ff88f2845519665598974ca6440a062a42fdc1820b1290137d61798163cc90",
+    "rim_sharpness_core/__init__.py": "d4b1f293d04ebcb1f20e948d563e73517a79042799bf998c824fe05400c10e0e",
+    "rim_sharpness_core/radial_esf.py": "e1bff9cb767d9c847597890af5d71564d898526443e59385e089a4a36b9bdcb2",
+    "rim_sharpness_core/hybrid.py": "9d1a50620e364497d7d2359e510ddc051ec8d0b86e4b33883b2f9f6904d28ca4",
+    "examples/expected_results.json": "1d1cdfe7e2cb0cdac9939e5d984e046255d547dbfc8ecfac685ac8462af969eb",
+    "examples/frame_000598_crop.png": "86b0893a85c207c9a8acecae85df07a415e50379323142164e43eca57278cec5",
+    "examples/frame_000598_overlay.png": "a701178e8773245076a64d12c2e66fffda01f42a5fa3468c501d7a9344e51f43",
+    "examples/frame_000598_result.json": "a37e4bb52247fe8014bd0c919d8c25ce0d5ca5879e6ee61b77adc0ab2efb6041",
+    "examples/frame_004294_crop.png": "d7f7335d632d875c6a60d05ae15cf0ec1a9e352c2e7fe771678c2ab818502182",
+    "examples/frame_004294_overlay.png": "a64fd968426f9ca3fcd75e9293a1b458209203bb14f9f3ef09f9e239e0b9aed5",
+    "examples/frame_004294_result.json": "9ab418818fda437f87d5840d738910eae05627605d82564d31b0288fd36ba326",
+    "examples/frame_005023_crop.png": "8cd83bbbc7a976dc35d5b5b67fe867a067ee27cfe44597d4109d042ac00d6ade",
+    "examples/frame_005023_overlay.png": "03f02ce3903e4b414ff42ace75d627a4bcf8cd20d6d8d600552dc17ed74134af",
+    "examples/frame_005023_result.json": "38b5440b6007f412f637954c373eac190bf0396f4e70f642e690c649025736c0",
+    "examples/frame_005741_crop.png": "903a7ca8ca20ecf67d3661c4bba0dda25a1207ec5784f06752f6d68c2d301e87",
+    "examples/frame_005741_overlay.png": "b9ee55de7f926917d71359aa83ebac58bbb6a211b3cfd49cbd92caa0cd8384b6",
+    "examples/frame_005741_result.json": "f3e0a1869ef3b208482000f8cadd55373e9bc4a70a220f64284bb1807afd712a"
+  }
+}

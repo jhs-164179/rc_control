@@ -1,0 +1,19 @@
+# ── RADXA (로버 본체) ────────────────────────────────────────────
+#   pip3 install -r requirements.txt
+dynamixel-sdk>=3.7.31        # XM430 (굴절 + 서스펜션)
+pyserial>=3.5                # VESC UART, 포트 탐색
+
+# ── 지상국 (조종 콘솔) ──────────────────────────────────────────
+#   pip3 install pygame
+# pygame 은 RADXA 에는 필요 없다. console.py 를 띄우는 쪽에만 설치한다.
+# pygame>=2.1
+
+# ── 분석 (선택) ─────────────────────────────────────────────────
+# analyze.py 는 표준 라이브러리만 쓴다. plot_pitch_validation.py 만 아래가 필요하다.
+# matplotlib>=3.5
+# numpy>=1.21
+# pandas>=1.3
+
+# ROS 2 (rclpy, std_msgs, sensor_msgs, diagnostic_msgs) 는 pip 이 아니라
+# ROS 배포판으로 설치한다. radxa.py / console.py 만 ROS 를 쓰고,
+# 캘리브레이션 도구는 전부 ROS 없이 돈다.

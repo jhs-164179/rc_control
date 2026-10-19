@@ -1,0 +1,76 @@
+### DARON — robot_localization EKF-B (recalib 검증용, 2026-09-21)
+### 배치 경로: ~/daron_ros/config/ekf_recalib.yaml
+###
+### ekf.yaml(EKF-A) 과 **네 가지만** 다르다. 나머지 파라미터는 A 와 같아야 A/B 가 성립한다.
+###   1. 최상위 키   ekf_filter_node  → ekf_filter_node_recalib   (노드 이름과 반드시 일치 — 다르면
+###                                                                 파라미터가 조용히 전부 기본값이 된다)
+###   2. imu0        /imu/data_fixed  → /imu/data_recalib         (imu_recalib_relay 출력)
+###   3. publish_tf  true             → false
+###   4. imu0_relative true          → false   (릴레이 body_align 이 장착·yaw0 를 처리, 260921 저녁)                     (odom→base_link 브로드캐스터는 A 하나만.
+###                                                                 둘이면 TF 가 에러 없이 진동한다)
+### 출력 토픽 odometry/filtered 는 launch 에서 /odometry/filtered_recalib 으로 리매핑한다.
+### ⚠ ekf.yaml 을 튜닝하면 이 파일에도 같은 값을 반영할 것 (아래 본문은 ekf.yaml 사본).
+
+ekf_filter_node_recalib:
+  ros__parameters:
+
+    # ── 시계 ──
+    # bag 재생으로 검증할 때는 반드시 true (+ ros2 bag play --clock).
+    # false로 두면 4일 전 타임스탬프가 sensor_timeout에 걸려
+    # 에러 없이 아무것도 발행되지 않는다.
+    # launch 인자(use_sim_time:=true)로 덮어쓰는 것을 기본으로 한다.
+    use_sim_time: false
+
+    # ── 기본 ──
+    frequency: 30.0             # cuVSLAM 30Hz 기준. IMU 100Hz라 예측을
+                                #   더 자주 돌릴 여지 있음 (A/B 대상)
+    sensor_timeout: 0.2
+    two_d_mode: false           # 등판각·롤 실험 있음. z/roll/pitch 유지
+    publish_tf: false          # [B] TF 는 EKF-A 만
+
+    print_diagnostics: true     # 배관 검증용. /diagnostics 로 입력 거절/지연을
+                                #   눈으로 확인. 실주행 전 false 권장
+    debug: false
+
+    # ── 프레임 (REP-105) ──
+    map_frame: map
+    odom_frame: odom
+    base_link_frame: base_link
+    world_frame: odom           # 9/3 실측: 최대 단일 점프 0.90mm,
+                                #   재측위 점프 없음 → 단순안 확정
+
+    # ── SLAM: 위치만 사용 ──
+    odom0: /slam/odometry
+    odom0_config: [true,  true,  true,      # x y z
+                   false, false, false,     # 자세는 IMU에 (yaw 충돌 회피)
+                   false, false, false,     # 속도: cuVSLAM twist는
+                   false, false, false,     #   pose 유한차분이라 노이즈 큼
+                   false, false, false]
+    odom0_differential: true    # 260914 실험: 가림 세션에서 SLAM 이 3 m 점프한 것을 EKF 가 5 s 안에
+                                #   그대로 흡수 → 점프를 델타로 받아 마할라노비스 게이트로 거른다
+    odom0_relative: false
+    odom0_queue_size: 10
+    odom0_pose_rejection_threshold: 5.0   # 260914 A/B (5.0 / 3.0 / 10.0)
+    # odom0_pose_rejection_threshold: 현재 cuVSLAM 공분산이 상수(0.01/1e6)라
+    #   마할라노비스 임계값이 의미를 못 가진다. 동적 공분산 적용 후 설정.
+
+    # ── IMU ──
+    # ⚠ 소스 미확정. /ekf/imu/data 는 공분산 0 → 발산 위험.
+    #   우선 /imu/data(상수 0.01)로 배관을 뚫는다.
+    imu0: /imu/data_recalib   # [B] recalib 릴레이 출력
+    imu0_config: [false, false, false,
+                  true,  true,  true,       # 자세
+                  false, false, false,
+                  true,  true,  true,       # 각속도
+                  true,  true,  false]      # 선가속도 (z는 A/B 대상)
+    imu0_differential: false
+    imu0_relative: false        # [B] 릴레이가 body_align 으로 base_link 자세(yaw0=0)를 이미 만들어 준다          # 260914 run03: CV7 는 GNSS 없는 AHRS 라 절대 heading 이 임의값(자력계).
+                                 #   false 면 EKF 가 그 yaw 를 절대 방위로 받아, differential 모드의 SLAM
+                                 #   body-frame 델타가 그 yaw 로 회전돼 x 이동이 y 로 나갔다(1.69 m).
+                                 #   true = 첫 IMU 자세를 0 으로 잡아 SLAM(첫 락=원점, x 전방)과 축을 맞춘다.
+    imu0_remove_gravitational_acceleration: true
+    imu0_queue_size: 10
+
+    # ── 프로세스 노이즈 ──
+    # 기본값 유지(파라미터 미지정 시 robot_localization 내장 기본값 사용).
+    # 9/7~9/8 실측 튜닝 대상 — 여기에 process_noise_covariance 15x15 추가 예정.

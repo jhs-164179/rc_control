@@ -1,0 +1,83 @@
+### DARON — robot_localization EKF-C (health 기반 공분산, 2026-09-29)
+### 배치 경로: ~/Daron/daron_run/config/ekf_health.yaml
+###
+### ekf_recalib.yaml(EKF-B) 과 **네 가지만** 다르다. 나머지는 B 와 같아야 B/C 비교가 성립한다.
+###   1. 최상위 키   ekf_filter_node_recalib → ekf_filter_node_health   (노드 이름과 반드시 일치)
+###   2. imu0        /imu/data_recalib → /imu/data_h        (health_monitor 가 공분산 × 1/h², FAIL 이면 버림)
+###   3. odom0       /slam/odometry    → /slam/odometry_h   (같음 + 자세 공분산을 INS 상태로 조절)
+###   4. odom0_config 자세(roll/pitch/yaw) true — IMU 가 끊겨도 자세가 제멋대로 돌지 않게 하는 핵심.
+###      differential 이라 SLAM 자세는 **각속도**로 들어간다(ros_filter.cpp: 델타/dt, 공분산 (현재+이전)×dt).
+###      평소(INS OK)는 health_monitor 가 SLAM 자세 공분산을 1.0 으로 줘서 IMU 가 주도하고,
+###      INS FAIL 이면 0.01×1/h² 로 내려 SLAM 이 넘겨받는다. 절대 자세 충돌은 없다(델타만 들어가므로).
+### imu0_relative 는 B 와 같이 false 여야 한다: robot_localization 3.5.4 의 set_pose 가 relative 기준값
+###   (initial_measurements_)을 지워, true 면 재정렬 직후 IMU 자세가 0/0/0 으로 다시 잡힌다.
+### publish_tf 는 daron_viz 의 tf_source 가 덮어쓴다 (기본 C → true, A 로 되돌리면 false; 260929).
+### 출력은 launch 에서 /odometry/filtered_health 로 리매핑,
+### set_pose 는 /ekf_filter_node_health/set_pose 로 리매핑 — 기본 이름(/set_pose)이면 A/B 도 같이 리셋된다.
+### ⚠ ekf.yaml / ekf_recalib.yaml 을 튜닝하면 이 파일에도 같은 값을 반영할 것.
+
+ekf_filter_node_health:
+  ros__parameters:
+
+    # ── 시계 ──
+    # bag 재생으로 검증할 때는 반드시 true (+ ros2 bag play --clock).
+    # false로 두면 4일 전 타임스탬프가 sensor_timeout에 걸려
+    # 에러 없이 아무것도 발행되지 않는다.
+    # launch 인자(use_sim_time:=true)로 덮어쓰는 것을 기본으로 한다.
+    use_sim_time: false
+
+    # ── 기본 ──
+    frequency: 30.0             # cuVSLAM 30Hz 기준. IMU 100Hz라 예측을
+                                #   더 자주 돌릴 여지 있음 (A/B 대상)
+    sensor_timeout: 0.2
+    two_d_mode: false           # 등판각·롤 실험 있음. z/roll/pitch 유지
+    publish_tf: false          # [C] launch tf_source 가 덮어씀 (기본 C = true). 파일값은 단독 기동용
+
+    print_diagnostics: true     # 배관 검증용. /diagnostics 로 입력 거절/지연을
+                                #   눈으로 확인. 실주행 전 false 권장
+    debug: false
+
+    # ── 프레임 (REP-105) ──
+    map_frame: map
+    odom_frame: odom
+    base_link_frame: base_link
+    world_frame: odom           # 9/3 실측: 최대 단일 점프 0.90mm,
+                                #   재측위 점프 없음 → 단순안 확정
+
+    # ── SLAM: 위치 + 자세(각속도) ──
+    odom0: /slam/odometry_h      # [C] health_monitor 릴레이 출력
+    odom0_config: [true,  true,  true,      # x y z
+                   true,  true,  true,      # [C] 자세 — differential 이라 각속도로 들어감. 가중은 공분산이 정한다
+                   false, false, false,     # 속도: cuVSLAM twist는
+                   false, false, false,     #   pose 유한차분이라 노이즈 큼
+                   false, false, false]
+    odom0_differential: true    # 260914 실험: 가림 세션에서 SLAM 이 3 m 점프한 것을 EKF 가 5 s 안에
+                                #   그대로 흡수 → 점프를 델타로 받아 마할라노비스 게이트로 거른다
+    odom0_relative: false
+    odom0_queue_size: 10
+    odom0_pose_rejection_threshold: 5.0   # 260914 A/B (5.0 / 3.0 / 10.0)
+    # odom0_pose_rejection_threshold: 현재 cuVSLAM 공분산이 상수(0.01/1e6)라
+    #   마할라노비스 임계값이 의미를 못 가진다. 동적 공분산 적용 후 설정.
+
+    # ── IMU ──
+    # ⚠ 소스 미확정. /ekf/imu/data 는 공분산 0 → 발산 위험.
+    #   우선 /imu/data(상수 0.01)로 배관을 뚫는다.
+    imu0: /imu/data_h          # [C] health_monitor 릴레이 출력 (입력은 /imu/data_recalib)
+    imu0_config: [false, false, false,
+                  true,  true,  true,       # 자세
+                  false, false, false,
+                  true,  true,  true,       # 각속도
+                  false, false, false]      # 선가속도 끔 [261008]: 켜면 출발 직후 EKF 가 10~20 cm 튐(viz2_pitch20 19.5 cm,
+                                            # trav_obstacle 11 cm, SLAM 이 붙기 전 IMU 가속도 적분). 끄면 1 cm 이하, 주행 중 차이 동일.
+                                            # 로버 속도에서 INS 가속도는 속도·위치에 쓸모없음(9/29) + 회전 시 원심가속도 섞임.
+    imu0_differential: false
+    imu0_relative: false        # [B] 릴레이가 body_align 으로 base_link 자세(yaw0=0)를 이미 만들어 준다          # 260914 run03: CV7 는 GNSS 없는 AHRS 라 절대 heading 이 임의값(자력계).
+                                 #   false 면 EKF 가 그 yaw 를 절대 방위로 받아, differential 모드의 SLAM
+                                 #   body-frame 델타가 그 yaw 로 회전돼 x 이동이 y 로 나갔다(1.69 m).
+                                 #   true = 첫 IMU 자세를 0 으로 잡아 SLAM(첫 락=원점, x 전방)과 축을 맞춘다.
+    imu0_remove_gravitational_acceleration: true
+    imu0_queue_size: 10
+
+    # ── 프로세스 노이즈 ──
+    # 기본값 유지(파라미터 미지정 시 robot_localization 내장 기본값 사용).
+    # 9/7~9/8 실측 튜닝 대상 — 여기에 process_noise_covariance 15x15 추가 예정.

@@ -1,0 +1,20 @@
+<?xml version="1.0"?>
+<package format="3">
+  <name>depth_transport</name>
+  <version>0.1.0</version>
+  <description>Low-latency Zstd transport and JPEG preview for 16UC1 depth images.</description>
+  <maintainer email="hsjin@example.com">hsjin</maintainer>
+  <license>Apache-2.0</license>
+
+  <buildtool_depend>ament_cmake</buildtool_depend>
+  <buildtool_depend>pkg-config</buildtool_depend>
+  <depend>rclcpp</depend>
+  <depend>sensor_msgs</depend>
+  <!-- [261017] 실제 include/link 대상 (CMakeLists: OpenCV, pkg_check_modules libzstd). cv_bridge 는 소스에서 쓰지 않아 뺐다 -->
+  <depend>libopencv-dev</depend>
+  <depend>libzstd-dev</depend>
+
+  <export>
+    <build_type>ament_cmake</build_type>
+  </export>
+</package>

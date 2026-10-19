@@ -1,0 +1,30 @@
+{
+  "completed_at": "2026-10-12T15:34:21.414230+00:00",
+  "unit_tests": 30,
+  "unit_tests_exit_code": 0,
+  "python": "3.12.14 (main, Aug 25 2026, 14:01:42) [MSC v.1944 64 bit (AMD64)]",
+  "python38_syntax_files": 12,
+  "python38_runtime_tested": false,
+  "numpy_dependency_of_rank_core": false,
+  "numba_dependency_of_rank_core": false,
+  "real_experiments": {
+    "video4": {
+      "cli_api_exact_match": true,
+      "duplicate_shuffle_invariance": true,
+      "observation_count": 59,
+      "qualified": 0,
+      "preview": 2,
+      "elapsed_duplicate_check_ms": 25.71719999832567
+    },
+    "realoutput": {
+      "cli_api_exact_match": true,
+      "duplicate_shuffle_invariance": true,
+      "observation_count": 385,
+      "qualified": 0,
+      "preview": 6,
+      "elapsed_duplicate_check_ms": 236.83700000401586
+    }
+  },
+  "unchanged_input_hashes": true,
+  "window_formula_checks": 10594
+}

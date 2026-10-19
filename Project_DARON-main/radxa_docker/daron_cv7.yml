@@ -1,0 +1,79 @@
+# DARON CV7-INS 설정 (2026-09-03)
+# 기반: microstrain_inertial_driver 4.9.0
+# 전제: GNSS 없음 / 데스크탑 USB 직결 / 외부 EKF는 robot_localization이 담당
+
+microstrain_inertial_driver:
+  ros__parameters:
+
+    # ── 연결 ─────────────────────────────
+    port     : '/dev/ttyACM0'   # RADXA 도커 사본: /dev/microstrain_main udev 링크 없음 (ACM1 = aux)
+    baudrate : 115200
+
+    # ── 좌표계 ───────────────────────────
+    use_enu_frame : True                 # NED(장치) → ENU(REP-103) 변환
+    frame_id      : 'imu_link'           # 규약 §3-1
+    mount_frame_id: 'base_link'
+
+    # base_link→imu_link TF는 daron.urdf.xacro가 발행함. 중복 금지
+    publish_mount_to_frame_id_transform : False
+
+    # map→base_link 등을 이 노드가 발행하면 EKF와 TF 트리 충돌
+    tf_mode : 0
+
+    # ── 시각 ─────────────────────────────
+    # 0=ROS시각 / 1=GPS시각 / 2=하이브리드(기본)
+    # cuVSLAM 이미지와 같은 시계를 쓰기 위해 0으로 시작
+    timestamp_source : 0
+
+    # ── CV7 필수 ─────────────────────────
+    # 1 또는 3이 아니면 노드가 시작하지 않음
+    filter_declination_source : 1
+
+    # ── aiding 전부 비활성 (GNSS·자기계·주행거리계 없음) ──
+    filter_enable_gnss_pos_vel_aiding     : False
+    filter_enable_gnss_heading_aiding     : False
+    filter_enable_altimeter_aiding        : False
+    filter_enable_odometer_aiding         : False
+    filter_enable_magnetometer_aiding     : False
+    filter_enable_external_heading_aiding : False
+
+    filter_relative_position_config : False
+
+    # PPS: GNSS 없으므로 장치 내부 오실레이터
+    filter_pps_source : 4
+
+    # ── 외부 aiding 구독 전부 비활성 ──────
+    subscribe_ext_time        : False
+    subscribe_ext_fix         : False
+    subscribe_ext_vel_ned     : False
+    subscribe_ext_vel_enu     : False
+    subscribe_ext_vel_ecef    : False
+    subscribe_ext_vel_body    : False
+    subscribe_ext_heading_ned : False
+    subscribe_ext_heading_enu : False
+    subscribe_ext_mag         : False
+    subscribe_ext_pressure    : False
+
+    # ── 발행 주기 (0 = 발행 안 함) ────────
+    imu_data_rate          : 100   # /imu/data      ★ 주 토픽
+    imu_data_raw_rate      : 100   # /imu/data_raw  비교용
+    imu_mag_data_rate      : 0
+    imu_pressure_data_rate : 0
+
+    filter_imu_data_rate                   : 100  # /ekf/imu/data  ← 목표3
+    filter_human_readable_status_data_rate : 1    # /ekf/status    ← 필터 상태
+    filter_odometry_map_data_rate          : 0
+    filter_odometry_earth_data_rate        : 0
+    filter_llh_position_data_rate          : 0
+    filter_velocity_data_rate              : 0
+
+    mip_filter_status_data_rate : 1   # /mip/filter/status  진단용
+
+    # GNSS 관련 발행 전부 끔
+    gnss1_llh_position_data_rate : 0
+    gnss1_velocity_data_rate     : 0
+    gnss2_llh_position_data_rate : 0
+    gnss2_velocity_data_rate     : 0
+
+    # ── 안전 ─────────────────────────────
+    save_settings : False   # 장치 비휘발성 메모리에 쓰지 않음
