@@ -1,1 +1,0 @@
-"""rover_node package."""

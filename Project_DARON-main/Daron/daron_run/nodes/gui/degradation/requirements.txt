@@ -1,3 +1,0 @@
-# Ranking core + record_adapter: Python standard library only. No pip install.
-# Optional observed_features adapter uses the already installed NumPy and
-# existing crater_analysis package. Do not upgrade the main runtime packages.
